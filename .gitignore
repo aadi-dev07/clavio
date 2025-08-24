@@ -1,0 +1,9 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Env files
+.env
+
+# Output directory
+output/
