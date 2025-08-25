@@ -4,6 +4,7 @@ from typing import Dict, Optional
 from datetime import datetime
 from agents import GitHubAgent, AnalysisAgent, PRDAgent
 from config import settings
+from output_formatter import format_output, create_section_header
 
 # Configure logging
 logging.basicConfig(
@@ -24,15 +25,28 @@ class MultiAgentOrchestrator:
         logging.info("Starting GitHub report generation...")
         try:
             report = await self.github_agent.generate_daily_report(days_back)
-            print(f"\n{'='*60}")
-            print("GITHUB ACTIVITY REPORT")
-            print(f"{'='*60}")
-            print(report)
-            print(f"{'='*60}\n")
-            return report
+            commits = await self.github_agent.get_daily_commits(days_back)
+            prs = await self.github_agent.get_pull_requests("open")
+            repo_stats = await self.github_agent.get_repository_stats()
+            
+            # Format the output using AI minimization
+            report_data = {
+                'report': report,
+                'commits': commits,
+                'pull_requests': prs,
+                'repository_stats': repo_stats
+            }
+            
+            formatted_output = await format_output('github', report_data)
+            
+            print(create_section_header("GitHub Activity Report", "📊"))
+            print(formatted_output)
+            print("─" * 50)
+            
+            return formatted_output
         except Exception as e:
             logging.error(f"Error in GitHub report: {e}")
-            return f"Error generating GitHub report: {e}"
+            return f"❌ **Error generating GitHub report:** {e}"
     
     async def run_product_analysis(self) -> Dict:
         """Run product requirements analysis"""
@@ -81,41 +95,20 @@ class MultiAgentOrchestrator:
         try:
             analysis_result = await self.analysis_agent.analyze_product_requirements_with_input(user_requirements)
             
-            print(f"\n{'='*60}")
-            print("PRODUCT ANALYSIS RESULTS")
-            print(f"{'='*60}")
-            
-            print(f"\n🎯 GOALS ({len(analysis_result.goals)} identified):")
-            for i, goal in enumerate(analysis_result.goals, 1):
-                print(f"   {i}. {goal}")
-            
-            print(f"\n⚠️  CONSTRAINTS ({len(analysis_result.constraints)} identified):")
-            for i, constraint in enumerate(analysis_result.constraints, 1):
-                print(f"   {i}. {constraint}")
-            
-            print(f"\n🚨 EDGE CASES ({len(analysis_result.edge_cases)} identified):")
-            for i, edge_case in enumerate(analysis_result.edge_cases, 1):
-                print(f"   {i}. {edge_case}")
-            
-            print(f"\n❓ FOLLOW-UP QUESTIONS ({len(analysis_result.follow_up_questions)} identified):")
-            for i, question in enumerate(analysis_result.follow_up_questions, 1):
-                print(f"   {i}. {question}")
-            
-            print(f"\n📊 IMPACT ANALYSIS:")
-            for key, value in analysis_result.impact_analysis.items():
-                print(f"   • {key.replace('_', ' ').title()}: {value}")
-            
-            print(f"\n💡 RECOMMENDATIONS ({len(analysis_result.recommendations)} provided):")
-            for i, recommendation in enumerate(analysis_result.recommendations, 1):
-                print(f"   {i}. {recommendation}")
-            
-            print(f"{'='*60}\n")
-            
-            return {
+            # Format the output using AI minimization
+            analysis_data = {
                 'analysis_result': analysis_result,
                 'user_input': user_requirements,
                 'status': 'success'
             }
+            
+            formatted_output = await format_output('analysis', analysis_data)
+            
+            print(create_section_header("Product Analysis Results", "🎯"))
+            print(formatted_output)
+            print("─" * 50)
+            
+            return analysis_data
         except Exception as e:
             logging.error(f"Error in product analysis: {e}")
             return {
@@ -143,19 +136,19 @@ class MultiAgentOrchestrator:
                 project_context=context_data
             )
             
-            print(f"\n{'='*60}")
-            print("PRD AND GHERKIN GENERATION COMPLETED")
-            print(f"{'='*60}")
-            print("PRD Document:")
-            print(documentation['prd'][:500] + "..." if len(documentation['prd']) > 500 else documentation['prd'])
-            print("\nGherkin Scenarios:")
-            print(documentation['gherkin'][:500] + "..." if len(documentation['gherkin']) > 500 else documentation['gherkin'])
-            print(f"{'='*60}\n")
-            
-            return {
+            # Format the output using AI minimization
+            prd_data = {
                 'documentation': documentation,
                 'status': 'success'
             }
+            
+            formatted_output = await format_output('prd', prd_data)
+            
+            print(create_section_header("PRD Generation Completed", "📋"))
+            print(formatted_output)
+            print("─" * 50)
+            
+            return prd_data
         except Exception as e:
             logging.error(f"Error in PRD generation: {e}")
             return {
@@ -210,6 +203,12 @@ class MultiAgentOrchestrator:
             results['status'] = 'failed'
             results['error'] = str(e)
             print(f"❌ Workflow failed: {e}")
+        
+        # Format the complete workflow output
+        formatted_output = await format_output('workflow', results)
+        print(create_section_header("Workflow Summary", "🚀"))
+        print(formatted_output)
+        print("─" * 50)
         
         return results
     
